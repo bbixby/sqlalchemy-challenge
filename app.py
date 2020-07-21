@@ -13,7 +13,7 @@ from flask import Flask, jsonify
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///hawaii.sqlite")
+engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -52,8 +52,23 @@ def welcome():
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     """Return the prcp data as json with date as key"""
+    #creation our session link from Python to the DB
+    session = Session(engine)
 
-    return jsonify(precipitationdata)
+    # Query all date and precipitation values
+    results = session.query(Measurement.date, Measurement.prcp).all()
+
+    session.close()
+
+    # Create a dictionary from the row data and append to a list of all_precipitation
+    all_precipitation = []
+    for date, prcp in results:
+        precipitation_dict = {}
+        precipitation_dict["date"] = date
+        precipitation_dict["prcp"] = prcp
+        all_precipitation.append(precipitation_dict)
+
+    return jsonify(all_precipitation)
 
 
 #################################################

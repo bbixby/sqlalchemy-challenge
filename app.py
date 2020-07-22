@@ -64,12 +64,34 @@ def precipitation():
     all_precipitation = []
     for date, prcp in results:
         precipitation_dict = {}
-        precipitation_dict["date"] = date
-        precipitation_dict["prcp"] = prcp
+        precipitation_dict[date] = prcp
         all_precipitation.append(precipitation_dict)
 
     return jsonify(all_precipitation)
 
+
+@app.route("/api/v1.0/stations")
+def stations():
+    """Return the prcp data as json with date as key"""
+    #creation our session link from Python to the DB
+    session = Session(engine)
+
+    # Query all date and precipitation values
+    stationNames = session.query(Station.name).all()
+
+    session.close()
+
+    # Convert list of tuples into normal list
+    station_names = list(np.ravel(stationNames))
+
+
+    return jsonify(station_names)
+
+@app.route("/api/v1.0/<start>")
+@app.route("/api/v1.0/<start>/<end>")
+def stats(start = None, end = None):
+
+    return jsonify(precipitation)
 
 #################################################
 # Define Main Behavior

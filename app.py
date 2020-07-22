@@ -2,6 +2,9 @@
 # Import Flask
 #################################################
 import numpy as np
+import pandas as pd
+import datetime
+from datetime import datetime
 
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
@@ -87,11 +90,57 @@ def stations():
 
     return jsonify(station_names)
 
+@app.route("/api/v1.0/tobs")
+def tobs():
+    #creation our session link from Python to the DB
+    session = Session(engine)
+
+    #set the latest date
+    start_date = datetime.date(2016, 8, 23)
+
+    # Query all date and tobs values
+    results = session.query(Measurement.date, Measurement.tobs).\
+        filter(Measurement.date >= start_date).\
+        filter(Measurement.station == 'USC00519281').all()
+
+    session.close()
+
+    # Create a dictionary from the row data and append to a list of tobs
+    all_tobs = []
+    for date, tobs in results:
+        tobs_dict = {}
+        tobs_dict[date] = tobs
+        all_tobs.append(tobs_dict)
+
+    return jsonify(all_tobs)
+
 @app.route("/api/v1.0/<start>")
 @app.route("/api/v1.0/<start>/<end>")
 def stats(start = None, end = None):
+    #creation our session link from Python to the DB
+    session = Session(engine)
 
-    return jsonify(precipitation)
+    #set the dates
+    start_str = start
+    start = datetime.strptime(start_str, '%Y-%m-%d').date()
+
+    # Query all date and tobs values
+    results = session.query(func.min(Measurement.tobs).label('MinTemp'), func.avg(Measurement.tobs).label('AvgTemp'), func.max(Measurement.tobs).label('MaxTemp')).\
+        filter(Measurement.date >= start).all()
+        #.filter(Measurement.date <= end_date)
+
+    session.close()
+
+    # Create a dictionary from the row data and append to a list of tobs
+    all_stats = []
+    for MinTemp, AvgTemp, MaxTemp in results:
+        stats_dict = {}
+        stats_dict[MinTemp] = MinTemp
+        stats_dict[AvgTemp] = AvgTemp
+        stats_dict[MaxTemp] = MaxTemp
+        all_stats.append(stats_dict)
+
+    return jsonify(all_stats)
 
 #################################################
 # Define Main Behavior

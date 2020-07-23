@@ -3,7 +3,7 @@
 #################################################
 import numpy as np
 import pandas as pd
-import datetime
+import datetime as dt
 from datetime import datetime
 
 import sqlalchemy
@@ -42,13 +42,13 @@ app = Flask(__name__)
 @app.route("/")
 def welcome():
     return (
-        f"Welcome to the Hawaii Weather API!<br/>"
-        f"Available Routes:<br/>"
-        f"/api/v1.0/precipitation<br/>"
-        f"/api/v1.0/stations<br/>"
-        f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start><br/>"
-        f"/api/v1.0/<start>/<end><br/>"
+        f"<h1>Welcome to the Hawaii Weather API!</h1><br/>"
+        f"<h3>Available Routes:</h3><br/>"
+        f"<h4><a href='/api/v1.0/precipitation'>/api/v1.0/precipitation</a><br/>"
+        f"<a href='/api/v1.0/stations'>/api/v1.0/stations</a><br/>"
+        f"<a href='/api/v1.0/tobs'>/api/v1.0/tobs</a><br/>"
+        f"<a href='/api/v1.0/<start>'>/api/v1.0/<start></a><br/>"
+        f"<a href='/api/v1.0/<start>/<end>'>/api/v1.0/<start>/<end></a><br/></h4>"
     )
 
 
@@ -58,9 +58,18 @@ def precipitation():
     #creation our session link from Python to the DB
     session = Session(engine)
 
-    # Query all date and precipitation values
-    results = session.query(Measurement.date, Measurement.prcp).all()
+    #find the latest date to define a year of data
+    maxDate = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+    end_date = pd.to_datetime(maxDate).date()
+    start_date = end_date - pd.DateOffset(years = 1)
+    start_date = pd.to_datetime(start_date).date()
 
+    # Query all date and precipitation values
+    results = session.query(Measurement.date, Measurement.prcp).\
+        filter(Measurement.date >= start_date).\
+        filter(Measurement.date <= end_date).\
+        order_by(Measurement.date.asc()).all()
+    
     session.close()
 
     # Create a dictionary from the row data and append to a list of all_precipitation
@@ -95,8 +104,11 @@ def tobs():
     #creation our session link from Python to the DB
     session = Session(engine)
 
-    #set the latest date
-    start_date = datetime.date(2016, 8, 23)
+    #find the latest date to define a year of data
+    maxDate = session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+    end_date = pd.to_datetime(maxDate).date()
+    start_date = end_date - pd.DateOffset(years = 1)
+    start_date = pd.to_datetime(start_date).date()
 
     # Query all date and tobs values
     results = session.query(Measurement.date, Measurement.tobs).\
@@ -121,13 +133,27 @@ def stats(start = None, end = None):
     session = Session(engine)
 
     #set the dates
-    start_str = start
-    start = datetime.strptime(start_str, '%Y-%m-%d').date()
+    if (start == None):
+        print(f'Please enter a start date of yyyy-mm-dd to the end of your query')
+    else:
+        start_str = start
+        start = datetime.strptime(start_str, '%Y-%m-%d').date()
+    if (end == None):
+        print(f'retrieving all results from start forward')
+    else:
+        end_str = end
+        end = datetime.strptime(end_str, '%Y-%m-%d').date()
 
     # Query all date and tobs values
-    results = session.query(func.min(Measurement.tobs).label('MinTemp'), func.avg(Measurement.tobs).label('AvgTemp'), func.max(Measurement.tobs).label('MaxTemp')).\
+    if (start == None):
+        print(f'Please enter a start date of yyyy-mm-dd to the end of your query')
+    elif (end == None):
+        results = session.query(func.min(Measurement.tobs).label('MinTemp'), func.avg(Measurement.tobs).label('AvgTemp'), func.max(Measurement.tobs).label('MaxTemp')).\
         filter(Measurement.date >= start).all()
         #.filter(Measurement.date <= end_date)
+    else:
+        results = session.query(func.min(Measurement.tobs).label('MinTemp'), func.avg(Measurement.tobs).label('AvgTemp'), func.max(Measurement.tobs).label('MaxTemp')).\
+        filter(Measurement.date >= start).filter(Measurement.date <= end).all()
 
     session.close()
 
